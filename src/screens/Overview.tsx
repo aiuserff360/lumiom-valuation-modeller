@@ -1,9 +1,9 @@
 import { Bar, BarChart, CartesianGrid, ComposedChart, LabelList, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useStore } from '../state/store'
 import { SCENARIO_LABELS, START_YEAR } from '../model/types'
-import { Card, KV, Kpi, Row, Takeaways, Val, YearHead, fmtKind, useFmt } from '../ui/components'
+import { Card, KV, Kpi, Row, Val, YearHead, fmtKind, useFmt } from '../ui/components'
 import { ChartLegend, SERIES, axisStyle, gridStyle, useChartFmt } from '../ui/charts'
-import { fmtInt, fmtMoneyCompact, fmtNum, fmtPct, fmtX, fmtYears } from '../ui/format'
+import { fmtMoneyCompact, fmtNum, fmtPct, fmtX, fmtYears } from '../ui/format'
 import type { ScreenId } from '../App'
 
 const SCREEN_NAMES: Record<string, string> = { revenue: 'Revenue', implementation: 'Implementation', company: 'Company Costs', profitability: 'Profitability', cash: 'Cash Flow', valuation: 'Valuation' }
@@ -27,7 +27,6 @@ export function Overview({ go }: { go: (id: ScreenId) => void }) {
   const qLabel = (y: number, q: number) => `Q${q + 1} ${START_YEAR + y}`
   const breakevenYear = m.pl.breakevenIndex === null ? null : years[m.pl.breakevenIndex]
   const mLabel = (v: unknown) => `${f.sym}${Number(v).toFixed(1)}M`
-  const watch = m.lens.filter((l) => l.status !== 'strong')
 
   const revChart = years.map((y, t) => ({
     year: y,
@@ -49,66 +48,6 @@ export function Overview({ go }: { go: (id: ScreenId) => void }) {
         <Kpi label="Funding need" hint="Peak cumulative cash deficit plus the minimum cash buffer (Screen 6)." value={compact(C.totalFundingNeed)} sub={`Round ${compact(F.initialAmount * 1e6)} in ${qLabel(F.initialYearIndex, F.initialQuarter)}`} tone={F.initialAmount * 1e6 < C.totalFundingNeed ? 'bad' : undefined} />
         <Kpi label={`Enterprise value at exit (${sel.exitYear})`} value={ok ? compact(sel.evAtExit) : 'n/m'} sub={sel.label} hint="Exit-year metric × multiple, or DCF terminal value, less any exit discount (Screen 7)." />
         <Kpi label="Investor returns" value={ok ? `${fmtX(inv.moneyMultiple)} / ${fmtPct(inv.irr)}` : 'n/m'} sub={`Money multiple / IRR on ${compact(inv.initialAmount)}`} />
-      </div>
-
-      <div className="grid c3">
-        <Card className="span2" title="Investor Lens" subtitle="The metrics an investor screens first, graded against common venture benchmarks. Each links to the screen that drives it.">
-          <div className="lens-summary">
-            <span>
-              <span className="pill pill-strong">Strong</span> {m.lens.filter((l) => l.status === 'strong').length}
-            </span>
-            <span>
-              <span className="pill pill-watch">Watch</span> {m.lens.filter((l) => l.status === 'watch').length}
-            </span>
-            <span>
-              <span className="pill pill-weak">Weak</span> {m.lens.filter((l) => l.status === 'weak').length}
-            </span>
-            <span className="muted">Thresholds are rules of thumb for early-stage enterprise software; adjust to your own view.</span>
-          </div>
-          <table className="compact lens">
-            <thead>
-              <tr>
-                <th className="left">Metric</th>
-                <th>Value</th>
-                <th className="left">Benchmark</th>
-                <th className="left">Status</th>
-                <th className="left">Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {m.lens.map((l) => (
-                <tr key={l.id}>
-                  <td className="left wrap">
-                    {l.label}
-                    <span className="sub">{l.definition}</span>
-                  </td>
-                  <td className="num calc bold">{l.kind === 'months' ? (Number.isFinite(l.value) ? `${l.value.toFixed(1)} mo` : 'n/m') : fmtKind(l.value, l.kind, f, l.kind === 'pct' ? 0 : 1)}</td>
-                  <td className="left sub">{l.benchmark}</td>
-                  <td className="left">
-                    <span className={`pill pill-${l.status}`}>{l.status === 'strong' ? 'Strong' : l.status === 'watch' ? 'Watch' : 'Weak'}</span>
-                  </td>
-                  <td className="left">
-                    <button className="link-btn" type="button" onClick={() => go(l.screen)}>
-                      {SCREEN_NAMES[l.screen]} →
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-
-        <Takeaways
-          title="Key Takeaways"
-          items={[
-            <>{SCENARIO_LABELS[scenario]} case: {fmtInt(sumS(m.rev.newCustomers))} customers signed and {m.rev.active[last]} active by {years[last]}; revenue grows to <b>{compact(m.rev.total[last])}</b> in {years[last]} ({compact(T.revenue)} over {N} years, {fmtPct(m.lens.find((l) => l.id === 'cagr')?.value ?? NaN)} CAGR).</>,
-            <>Gross margin reaches {fmtPct(m.pl.grossMargin[last])} and EBITDA margin {fmtPct(m.pl.ebitdaMargin[last])} by {years[last]}; EBITDA breakeven {breakevenYear ? `in ${breakevenYear}` : 'is not reached'}.</>,
-            <>Unit economics: {fmtPct(m.impl.implMargin)} implementation margin, {fmtPct(m.impl.recurringMargin)} recurring margin, LTV/CAC {fmtNum(m.unit.ltvToCac, 1)}x.</>,
-            <>Funding need of <b>{compact(C.totalFundingNeed)}</b> (peak deficit {compact(C.peakFundingNeed)} in {years[C.peakFundingIndex]}); the proposed {compact(F.initialAmount * 1e6)} round {F.initialAmount * 1e6 >= C.totalFundingNeed ? 'covers it' : 'falls short'}.</>,
-            <>Exit value of {ok ? compact(sel.evAtExit) : 'n/m'} ({sel.label}) returns <b>{ok ? fmtX(inv.moneyMultiple) : 'n/m'}</b> and a <b>{ok ? fmtPct(inv.irr) : 'n/m'}</b> IRR to investors.</>,
-            <>{watch.length ? `Points to probe: ${watch.map((l) => l.label).join(', ')}.` : 'Every investor-lens metric is in the strong range.'}</>,
-          ]}
-        />
       </div>
 
       <div className="grid c3">
@@ -309,6 +248,55 @@ export function Overview({ go }: { go: (id: ScreenId) => void }) {
             </tbody>
           </table>
         </Card>
+      </div>
+
+      <div className="grid c1">
+        <Card title="Investor Lens" subtitle="The metrics an investor screens first, graded against common venture benchmarks. Each links to the screen that drives it.">
+          <div className="lens-summary">
+            <span>
+              <span className="pill pill-strong">Strong</span> {m.lens.filter((l) => l.status === 'strong').length}
+            </span>
+            <span>
+              <span className="pill pill-watch">Watch</span> {m.lens.filter((l) => l.status === 'watch').length}
+            </span>
+            <span>
+              <span className="pill pill-weak">Weak</span> {m.lens.filter((l) => l.status === 'weak').length}
+            </span>
+            <span className="muted">Thresholds are rules of thumb for early-stage enterprise software; adjust to your own view.</span>
+          </div>
+          <table className="compact lens">
+            <thead>
+              <tr>
+                <th className="left">Metric</th>
+                <th>Value</th>
+                <th className="left">Benchmark</th>
+                <th className="left">Status</th>
+                <th className="left">Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {m.lens.map((l) => (
+                <tr key={l.id}>
+                  <td className="left wrap">
+                    {l.label}
+                    <span className="sub">{l.definition}</span>
+                  </td>
+                  <td className="num calc bold">{l.kind === 'months' ? (Number.isFinite(l.value) ? `${l.value.toFixed(1)} mo` : 'n/m') : fmtKind(l.value, l.kind, f, l.kind === 'pct' ? 0 : 1)}</td>
+                  <td className="left sub">{l.benchmark}</td>
+                  <td className="left">
+                    <span className={`pill pill-${l.status}`}>{l.status === 'strong' ? 'Strong' : l.status === 'watch' ? 'Watch' : 'Weak'}</span>
+                  </td>
+                  <td className="left">
+                    <button className="link-btn" type="button" onClick={() => go(l.screen)}>
+                      {SCREEN_NAMES[l.screen]} →
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+
       </div>
 
       <div className="grid c1">
