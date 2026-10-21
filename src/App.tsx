@@ -25,7 +25,7 @@ export type ScreenId = (typeof SCREENS)[number]['id']
 function useHashRoute(): [ScreenId, (id: ScreenId) => void] {
   const read = (): ScreenId => {
     const h = window.location.hash.replace(/^#\/?/, '')
-    return (SCREENS.some((s) => s.id === h) ? h : 'overview') as ScreenId
+    return (SCREENS.some((s) => s.id === h) ? h : 'revenue') as ScreenId
   }
   const [id, setId] = useState<ScreenId>(read)
   useEffect(() => {

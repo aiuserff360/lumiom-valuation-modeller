@@ -14,6 +14,10 @@ npm run preview    # serve the production build locally
 
 Deploying: pushing to `main` on GitHub runs `.github/workflows/deploy.yml`, which tests, builds and publishes `dist/` to GitHub Pages (enable Pages with source "GitHub Actions" in the repository settings). The build uses a relative base path, so it works at any URL.
 
+## Report download
+
+The app opens on **Revenue Assumptions** so the natural flow is Screens 2 → 7, then back to the Overview. The Overview has a **Download report (HTML)** button that generates a single self-contained HTML file (`src/report/report.ts`, a template filled from the live model) with every assumption, unit cost, company cost, the P&L, cash flow and funding need, valuation, sensitivities and the Investor Lens, for the scenario, period and currency on screen at that moment. It opens in any browser without a server and prints cleanly to PDF. `npx tsx scripts/report-sample.ts out.html` writes a base-case sample.
+
 ## Global controls
 
 | Control | Behaviour |

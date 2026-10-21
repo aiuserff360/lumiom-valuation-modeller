@@ -5,11 +5,14 @@ import { Card, KV, Kpi, Row, Val, YearHead, fmtKind, useFmt } from '../ui/compon
 import { ChartLegend, SERIES, axisStyle, gridStyle, useChartFmt } from '../ui/charts'
 import { fmtMoneyCompact, fmtNum, fmtPct, fmtX, fmtYears } from '../ui/format'
 import type { ScreenId } from '../App'
+import { useMemo } from 'react'
+import { buildReport, downloadReport } from '../report/report'
+import { runSensitivity } from '../model/sensitivity'
 
 const SCREEN_NAMES: Record<string, string> = { revenue: 'Revenue', implementation: 'Implementation', company: 'Company Costs', profitability: 'Profitability', cash: 'Cash Flow', valuation: 'Valuation' }
 
 export function Overview({ go }: { go: (id: ScreenId) => void }) {
-  const { model: m, inputs, scenario, currency, fx } = useStore()
+  const { model: m, inputs, scenario, currency, fx, period, factor } = useStore()
   const f = useFmt()
   const cf = useChartFmt()
   const years = m.years
@@ -39,8 +42,23 @@ export function Overview({ go }: { go: (id: ScreenId) => void }) {
   const plChart = years.map((y, t) => ({ year: y, Revenue: cf.axisM(m.pl.revenue[t]), EBITDA: cf.axisM(m.pl.ebitda[t]), 'Net profit': cf.axisM(m.pl.netIncome[t]) }))
   const cashChart = years.map((y, t) => ({ year: y, 'Net cash flow': cf.axisM(C.fcf[t]), 'Closing cash (after funding)': cf.axisM(C.closing[t]) }))
 
+  const sensRows = useMemo(() => runSensitivity(inputs, period), [inputs, period])
+  const onDownload = () => {
+    const html = buildReport(m, inputs, { scenario, period, currency, fx: fx[currency], factor, sensitivity: sensRows })
+    const stamp = new Date().toISOString().slice(0, 10)
+    downloadReport(html, `lumiom-valuation-${scenario}-${period}y-${currency}-${stamp}.html`)
+  }
+
   return (
     <>
+      <div className="report-bar">
+        <div>
+          <b>Download this model as a report.</b> A single HTML file with every assumption, unit cost, company cost, the P&amp;L, cash flow and funding need, valuation and the Investor Lens, filled with the numbers on screen right now ({SCENARIO_LABELS[scenario]} case, {N} years, {currency}). Open it in any browser or print it to PDF.
+        </div>
+        <button className="cta" type="button" onClick={onDownload}>
+          ⬇ Download report (HTML)
+        </button>
+      </div>
       <div className="grid c6">
         <Kpi label={`Revenue (${N}Y)`} value={compact(T.revenue)} sub={`${f.sym}${f.m(m.rev.total[last])}M in ${years[last]}`} />
         <Kpi label={`EBITDA (${years[last]})`} value={compact(m.pl.ebitda[last])} sub={`${fmtPct(m.pl.ebitdaMargin[last])} margin · breakeven ${breakevenYear ?? 'not reached'}`} tone={m.pl.ebitda[last] < 0 ? 'bad' : undefined} />
